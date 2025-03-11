@@ -1,0 +1,53 @@
+name: Actualizează Știrile
+on:
+  schedule:
+    - cron: '0 8 * * *'  # Rulește zilnic la ora 8 AM (UTC)
+  workflow_dispatch:      # Permite declanșarea manuală
+
+jobs:
+  update-news:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Instală dependențe
+        run: |
+          sudo apt-get install -y python3 python3-pip
+          pip install feedparser
+
+      - name: Actualizează știrile
+        run: |
+          python3 <<EOF
+          import feedparser
+          import json
+
+          # URL-ul fluxului RSS (ex: Digi24)
+          rss_url = "https://www.digi24.ro/rss"
+          feed = feedparser.parse(rss_url)
+
+          # Generează HTML cu știrile
+          html_content = '<h1>Știri Actualizate</h1>'
+          for entry in feed.entries[:5]:  # Afișează ultimele 5 știri
+              html_content += f'''
+              <div class="stire">
+                  <h3><a href="{entry.link}">{entry.title}</a></h3>
+                  <p>{entry.description}</p>
+              </div>
+              '''
+
+          # Actualizează fișierul index.html
+          with open('index.html', 'r') as f:
+              content = f.read()
+          new_content = content.replace('<!-- Aici vor apărea știrile -->', html_content)
+          with open('index.html', 'w') as f:
+              f.write(new_content)
+          EOF
+
+      - name: Commit și Push
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add index.html
+          git commit -m "Actualizează știrile"
+          git push
